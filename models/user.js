@@ -10,11 +10,11 @@ const userSchema = new mongoose.Schema({
         require: true,
         unique: true,
     }, 
-    // password: {
-    //     type: String,
-    //     required: true,
-    // },
-    password: String,
+    passwordHsh: {
+        type: String,
+        required: true,
+    },
+    // password: String,
     avatarUrl: String,
 }, {
     timestamps: true, //обяснение что дата создания и редактиврования сущности должны остановиться
