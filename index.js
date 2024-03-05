@@ -7,8 +7,9 @@ import { validationResult } from 'express-validator'
 import bcrypt from 'bcrypt'
 
 import { registerValidation } from './validations/auth.js'
-import UserModel from './models/user.js'
 
+import UserModel from './models/user.js'
+import checkAuth from './middleware/checkAuth.js'
 
 mongoose
     .connect('mongodb+srv://novrsec:8cjH0VkQmbICAjKu@cluster0.spwz01d.mongodb.net/analytic?retryWrites=true&w=majority&appName=Cluster0')
@@ -23,17 +24,21 @@ const app = express()
 
 app.use(express.json()) // for parsing application/json
 
-app.post('./auth/login', async  (req, res) => {
+app.post('/auth/login', async  (req, res) => {
     try {
         const user = await UserModel.findOne({email: req.body.email})
         
         if(!user) {
             return res.status(404).json({//лучше не писать почему не прошёл авторизацию, чтобы не дали возможность злоумышленнику пробить базу
-                message: 'User dont found('
+                message: 'User dont found(',
         })
         }
-        const isValidPass = await bcrypt.compare(req.body.password, user._doc.passwordHash)
 
+
+
+        // return console.log(user._doc); // проверка отправленных данных через консоль
+        const isValidPass = await bcrypt.compare(req.body.password, user._doc.passwordHsh)
+        
         if (!isValidPass) {
             return res.status(404).json({
                 message: 'Invalid login/password'
@@ -50,7 +55,7 @@ app.post('./auth/login', async  (req, res) => {
         }
         )
 
-        const {passwordHash, ...userData} = user._doc
+        const {passwordHsh, ...userData} = user._doc
 
         res.json ({
             ...userData,
@@ -60,7 +65,7 @@ app.post('./auth/login', async  (req, res) => {
     } catch (err) {
         
         res.status(500).json({
-            message: 'Cannot auth  the user'
+            message: 'Cannot auth the user'
         });
         console.error(err);
     }
@@ -112,10 +117,20 @@ app.post( '/auth/register', registerValidation, async (req, res)=>{
       }  
 })
 
-app.get('/data', async (req, res) =>{
+app.get('/auth/my_data', checkAuth, async (req, res) =>{
     try{
-        const data = await UserModel.find({})
-        res.json(data)
+        const user = await UserModel.findById(req.userId)
+
+        if (!user) {
+            return res.status(404).json({
+                massage: 'User dont found(',
+            })
+        }
+
+        const {passwordHsh, ...userData} = user._doc
+
+        res.json(userData)
+        
     } catch(err){
         res.status(500).json({
             message: "Error loading data",
